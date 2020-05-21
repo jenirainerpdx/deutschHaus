@@ -4,8 +4,10 @@ This is a small "toy" scala based spark job.  It is used for the purposes of tes
 
 ## To run locally: 
 1.  Take the files found in src/main/resources and put them in a local directory:  `/tmp/wohnungData` is what is specified in the code.
+2.  Not all of the files are included.  One file, for apartment rental data, was too large. This file can be downloaded from https://www.kaggle.com/corrieaar/apartment-rental-offers-in-germany and transformed into 
+a parquet file by reading it in jupyter or zeppelin and writing to parquet.  
 2.  `sbt` to invoke the sbt shell.
-3.  run - this will default to the dataframe version.  
+3.  `run` - this will default to the dataframe version.  
     a.  If you try `run -a rdd` this will switch to the RDD version.
     
     
