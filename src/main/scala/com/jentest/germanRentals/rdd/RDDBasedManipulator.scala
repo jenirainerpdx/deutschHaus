@@ -31,7 +31,7 @@ object RDDBasedManipulator {
       .reduce((total, cur) => total + cur)
   }
 
-  def analyzeData(sparkSession: SparkSession): RDD[ReducedImmo] = {
+  def analyzeData(sparkSession: SparkSession, dataDirectory: String): RDD[ReducedImmo] = {
     val sparkContext = sparkSession.sparkContext
 
     val immoDF = sparkSession

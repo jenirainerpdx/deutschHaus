@@ -7,7 +7,10 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import scopt.OptionParser
 
-case class Config(apiToUse: String = "ds")
+case class Config(
+                   apiToUse: String = "ds",
+                   local: Boolean = true,
+                   dataDirectory: String = "/data")
 
 object Main {
 
@@ -23,30 +26,36 @@ object Main {
       opt[String]('a', "api")
         .optional()
         .action((x, c) => c.copy(apiToUse = x))
-        .text("This config item is optional.  It specifies whether to use ds or rdd.  'ds' is default.  To use the rdd api, pass in rdd as a value.")
+        .text("This config item is optional." +
+          "  It specifies whether to use ds or rdd.  'ds' is default." +
+          "  To use the rdd api, pass in rdd as a value.")
+
+      opt[Boolean]('l', "local")
+        .optional()
+        .action((y, c) => c.copy(local = y))
+        .text("This config item is optional." +
+          "  If false, we are running on an emr cluster.")
+
+      opt[String]('d', "dataDir")
+        .action((d, c) => c.copy(dataDirectory = d))
+        .text("Prefix for defining location of where" +
+          " the data files live.  May be a local directory or an s3 bucket.")
     }
 
-    val rdd: Boolean = parser.parse(args, Config()) match {
-      case Some(config) =>
-        if (config.apiToUse.equalsIgnoreCase("rdd")) {
-          true
-        }
-        else {
-          false
-        }
-      case _ => false
-    }
+    val jobConfig: Option[Config] = parser.parse(args, Config())
+
+    val rdd: Boolean = jobConfig.get.apiToUse.equalsIgnoreCase("rdd")
 
     var rddOut: RDD[ReducedImmo] = sparkSession.sparkContext.emptyRDD[ReducedImmo]
     var dfOut: DataFrame = sparkSession.emptyDataFrame
 
 
     if (rdd) {
-      rddOut = RDDBasedManipulator.analyzeData(sparkSession)
+      rddOut = RDDBasedManipulator.analyzeData(sparkSession, jobConfig.get.dataDirectory)
       println(rddOut.count)
     }
     else {
-      dfOut = DataframeBasedManipulator.analyzeData(sparkSession)
+      dfOut = DataframeBasedManipulator.analyzeData(sparkSession, jobConfig.get.dataDirectory)
       println(dfOut.count)
     }
 

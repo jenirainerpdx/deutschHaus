@@ -1,16 +1,17 @@
 package com.jentest.germanRentals.dataframe
 
-import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 
 object DataframeBasedManipulator {
 
-  def analyzeData(sparkSession: SparkSession): DataFrame = {
+  def analyzeData(sparkSession: SparkSession, dataDirectory: String): DataFrame = {
     import sparkSession.implicits._
 
     val geoDataDF = sparkSession
       .read
-      .parquet("/tmp/wohnungData/geoData")
+      .parquet(dataDirectory + "/geoData")
 
     val areas = geoDataDF
       .select(
@@ -24,7 +25,7 @@ object DataframeBasedManipulator {
 
     val housesDF = sparkSession
       .read
-      .parquet("/tmp/wohnungData/houses")
+      .parquet(dataDirectory + "/houses")
       .withColumnRenamed("Wohnflaeche__m²_", "Wohnflaeche")
       .withColumnRenamed("Warmmiete__in_€_", "Warmmiete")
       .withColumnRenamed("Garten/_mitnutzung", "Garten")
@@ -64,7 +65,7 @@ object DataframeBasedManipulator {
 
     val apartmentsDF = sparkSession
       .read
-      .parquet("/tmp/wohnungData/wohnung")
+      .parquet(dataDirectory + "/wohnung")
 
     val wohnungStep1 = apartmentsDF
       .join(areas, $"geo_plz" === $"postalCode", "left")
@@ -106,21 +107,21 @@ object DataframeBasedManipulator {
   }
 
 
-  val doHousesHave = udf((value: String) => {
+  val doHousesHave: UserDefinedFunction = udf((value: String) => {
     value match {
       case "true" => true
       case _ => false
     }
   })
 
-  val isThereATerrace = udf((description: Seq[String]) => {
+  val isThereATerrace: UserDefinedFunction = udf((description: Seq[String]) => {
     description match {
       case null => false
       case _ => deriveFromDescriptionContents(description, "terrasse")
     }
   })
 
-  val arePetsAllowed = udf((description: Seq[String]) => {
+  val arePetsAllowed: UserDefinedFunction = udf((description: Seq[String]) => {
     description match {
       case null => false
       case _ => deriveFromDescriptionContents(description, "haustiere") ||
