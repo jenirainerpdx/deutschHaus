@@ -12,9 +12,12 @@ lazy val root = (project in file(".")).
 val sparkVersion = "2.4.5"
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-core" % sparkVersion ,
   "org.apache.spark" %% "spark-sql" % sparkVersion,
-  "com.github.scopt" %% "scopt" % "3.6.0"
+  "com.github.scopt" %% "scopt" % "3.6.0",
+  // logging
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 )
 
 target in assembly := file("target/")

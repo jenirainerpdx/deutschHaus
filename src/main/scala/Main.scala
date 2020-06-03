@@ -1,7 +1,5 @@
-package com.jentest.germanRentals
-
-import com.jentest.germanRentals.dataframe.DataframeBasedManipulator
-import com.jentest.germanRentals.model.ReducedImmo
+import com.jentest.germanRentals.dataframe.DataFrameBasedManipulator
+import com.jentest.germanRentals.model.{MinsAndMaxes, ReducedImmo}
 import com.jentest.germanRentals.rdd.RDDBasedManipulator
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -15,12 +13,6 @@ case class Config(
 object Main {
 
   def main(args: Array[String]): Unit = {
-
-    val sparkSession = SparkSession
-      .builder()
-      .appName("deutscheWohnung")
-      .master("local[4]")
-      .getOrCreate()
 
     val parser = new OptionParser[Config]("test config") {
       opt[String]('a', "api")
@@ -44,18 +36,34 @@ object Main {
 
     val jobConfig: Option[Config] = parser.parse(args, Config())
 
+
+    val sparkSession = {
+      if (jobConfig.get.local) {
+        SparkSession
+          .builder()
+          .appName("deutscheWohnung")
+          .master("local[*]")
+          .getOrCreate()
+      } else {
+        SparkSession
+          .builder()
+          .appName("deutscheWohnung")
+          .getOrCreate()
+      }
+    }
+
     val rdd: Boolean = jobConfig.get.apiToUse.equalsIgnoreCase("rdd")
 
-    var rddOut: RDD[ReducedImmo] = sparkSession.sparkContext.emptyRDD[ReducedImmo]
+    var rddOut: RDD[MinsAndMaxes] = sparkSession.sparkContext.emptyRDD[MinsAndMaxes]
     var dfOut: DataFrame = sparkSession.emptyDataFrame
-
 
     if (rdd) {
       rddOut = RDDBasedManipulator.analyzeData(sparkSession, jobConfig.get.dataDirectory)
-      println(rddOut.count)
+      //println(rddOut)
+
     }
     else {
-      dfOut = DataframeBasedManipulator.analyzeData(sparkSession, jobConfig.get.dataDirectory)
+      dfOut = DataFrameBasedManipulator.analyzeData(sparkSession, jobConfig.get.dataDirectory)
       println(dfOut.count)
     }
 

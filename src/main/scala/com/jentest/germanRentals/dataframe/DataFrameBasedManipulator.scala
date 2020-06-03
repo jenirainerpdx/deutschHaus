@@ -1,10 +1,10 @@
 package com.jentest.germanRentals.dataframe
 
-import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.expressions.{UserDefinedFunction, Window}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 
-object DataframeBasedManipulator {
+object DataFrameBasedManipulator {
 
   def analyzeData(sparkSession: SparkSession, dataDirectory: String): DataFrame = {
     import sparkSession.implicits._
@@ -16,12 +16,9 @@ object DataframeBasedManipulator {
     val areas = geoDataDF
       .select(
         "postalCode",
-        "adminDivision",
-        "state",
-        "stateAbbrev",
-        "district",
-        "municipalityKey"
-      )
+        "state"
+      ).distinct
+
 
     val housesDF = sparkSession
       .read
@@ -51,9 +48,7 @@ object DataframeBasedManipulator {
       .join(areas, $"plz" === $"postalCode", "left")
       .select(
         $"postalCode",
-        $"adminDivision",
         $"state",
-        $"district",
         col("Warmmiete").alias("rent"),
         greatest($"Preis", $"ExactPreis").alias("purchasePrice"),
         $"Zimmer",
@@ -62,6 +57,18 @@ object DataframeBasedManipulator {
         doHousesHave($"Haustiere_erlaubt").alias("Haustiere")
       )
 
+    val byState = Window.partitionBy('state)
+
+    def augmentDataFrameWithAverageMaxAndMin(dataFrame: DataFrame): DataFrame = dataFrame
+      .withColumn("statePurchasePriceAverage", avg('purchasePrice) over byState)
+      .withColumn("statePurchasePriceMax", max('purchasePrice) over byState)
+      .withColumn("statePurchasePriceMin", min('purchasePrice) over byState)
+      .withColumn("stateRentAverage", avg('rent) over byState)
+      .withColumn("stateRentMax", max('rent) over byState)
+      .withColumn("stateRentMin", min('rent) over byState)
+
+    val homesWithStatewideStatistics = augmentDataFrameWithAverageMaxAndMin(houses)
+      .filter('statePurchasePriceMax === 'purchasePrice || 'statePurchasePriceMin === 'purchasePrice)
 
     val apartmentsDF = sparkSession
       .read
@@ -71,9 +78,7 @@ object DataframeBasedManipulator {
       .join(areas, $"geo_plz" === $"postalCode", "left")
       .select(
         $"postalCode",
-        $"adminDivision",
         $"state",
-        $"district",
         greatest($"totalRent", $"serviceCharge", $"baseRent").alias("rent"),
         lit(0).alias("purchasePrice"),
         col("noRooms").alias("Zimmer"),
@@ -89,9 +94,7 @@ object DataframeBasedManipulator {
 
     val apartments = wohnungStep2.select(
       $"postalCode",
-      $"adminDivision",
       $"state",
-      $"district",
       $"rent",
       $"purchasePrice",
       $"Zimmer",
@@ -100,10 +103,10 @@ object DataframeBasedManipulator {
       $"Haustiere"
     )
 
-    val homes = houses.union(apartments)
-    homes.show()
+    val apartmentsWithStats = augmentDataFrameWithAverageMaxAndMin(apartments)
+      .filter('stateRentMax === 'rent || 'stateRentMin === 'rent)
 
-    homes
+    homesWithStatewideStatistics.union(apartmentsWithStats)
   }
 
 
@@ -132,4 +135,6 @@ object DataframeBasedManipulator {
   def deriveFromDescriptionContents(description: Seq[String], term: String): Boolean = {
     description.contains(term.toLowerCase)
   }
+
 }
+

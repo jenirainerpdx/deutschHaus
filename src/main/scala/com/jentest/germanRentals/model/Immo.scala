@@ -53,16 +53,33 @@ case class ImmoInputs(
                      )
 
 case class ReducedImmo(
-                      scoutId: Long,
-                      pricetrend: Double,
-                      cleansedRent: Double,
-                      totalRent: Double,
-                      serviceCharge: Double,
-                      baseRent: Double,
-                      description: String,
-                      wordMap: Map[String, Int],
-                      totalWordCount: Int,
-                      state: String,
-                      region2: String,
-                      region3: String
+                        scoutId: Long,
+                        pricetrend: Double,
+                        cleansedRent: Double,
+                        totalRent: Double,
+                        serviceCharge: Double,
+                        baseRent: Double,
+                        description: String,
+                        wordMap: Map[String, Int],
+                        totalWordCount: Int,
+                        state: String,
+                        region2: String,
+                        region3: String
                       )
+
+case class MinsAndMaxes(
+                         postalCode: Long,
+                         state: String,
+                         rent: Double,
+                         purchasePrice: Double,
+                         Zimmer: String,
+                         Garten: Boolean,
+                         Terrasse: Boolean,
+                         Haustiere: Boolean,
+                         statePurchasePriceAverage: Double,
+                         statePurchasePriceMax: Double,
+                         statePurchasePriceMin: Double,
+                         stateRentAverage: Double,
+                         stateRentMax: Double,
+                         stateRentMin: Double
+                       )

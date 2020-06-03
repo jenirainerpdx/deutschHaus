@@ -1,10 +1,11 @@
 package com.jentest.germanRentals.rdd
 
-import com.jentest.germanRentals.model.ReducedImmo
+import com.jentest.germanRentals.model.{MinsAndMaxes, ReducedImmo}
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession}
 
-object RDDBasedManipulator {
+object RDDBasedManipulator extends LazyLogging {
 
   def nullSafeGetLong(row: Row, i: Int) = {
     if (row.isNullAt(i)) 0L else row.getLong(i)
@@ -31,18 +32,25 @@ object RDDBasedManipulator {
       .reduce((total, cur) => total + cur)
   }
 
-  def analyzeData(sparkSession: SparkSession, dataDirectory: String): RDD[ReducedImmo] = {
-    val sparkContext = sparkSession.sparkContext
+  def analyzeData(sparkSession: SparkSession, dataDirectory: String): RDD[MinsAndMaxes] = {
+
+    val areas: RDD[Area] = AreaExtractor
+      .getStatesWithPostalCodes(dataDirectory + "/geoData", sparkSession)
+      .distinct
+
+    val houses: RDD[House] = HouseExtractor.getHouseSales(dataDirectory + "/houses", sparkSession)
+
+    val groupedAreas = areas.groupBy(area => area.postalCode)
+    val groupedHouses = houses.groupBy(house => house.plz)
+    val housesWithArea = groupedHouses.join(groupedAreas)
+    housesWithArea.take(5).foreach(println)
 
     val immoDF = sparkSession
       .read
-      .parquet("/tmp/wohnungData/")
+      .parquet(dataDirectory + "/wohnung")
 
     val immoRDD = immoDF.rdd
 
-    immoDF.printSchema
-
-    println("****************** wohnung count: " + immoRDD.count)
     /**
      * scoutId = 12 long
      * pricetrend = 8 double
@@ -80,20 +88,15 @@ object RDDBasedManipulator {
       row.wordMap.keys.toArray.contains("Villa")
     })
 
-    descriptionWordsAndRegions.take(5).foreach(rImmo => {
-      println(s"scoutId: ${rImmo.scoutId}"
-        + s"\tpriceTrend: ${rImmo.pricetrend}"
-        + s"\ttotalRent: ${rImmo.totalRent}\tserviceCharge: ${rImmo.serviceCharge}"
-        + s"\tbaseRent: ${rImmo.baseRent}\n"
-        + s"${rImmo.wordMap}\ntotalWordCount: ${rImmo.totalWordCount}")
-    })
+    /*    descriptionWordsAndRegions.take(5).foreach(rImmo => {
+          println(s"scoutId: ${rImmo.scoutId}"
+            + s"\tpriceTrend: ${rImmo.pricetrend}"
+            + s"\ttotalRent: ${rImmo.totalRent}\tserviceCharge: ${rImmo.serviceCharge}"
+            + s"\tbaseRent: ${rImmo.baseRent}\n"
+            + s"${rImmo.wordMap}\ntotalWordCount: ${rImmo.totalWordCount}")
+        })*/
 
-    println("************************************")
-    villas.toDebugString
-    println("dependency tree:  *******************")
-    villas.dependencies
-
-    villas
+    sparkSession.sparkContext.emptyRDD[MinsAndMaxes]
   }
 
 }
